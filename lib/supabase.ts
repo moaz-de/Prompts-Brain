@@ -1,9 +1,33 @@
 import { createBrowserClient } from '@supabase/ssr';
 
 export function createClient(rememberMe: boolean = true) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    // Return a dummy proxy during build time so it doesn't throw errors
+    return new Proxy({} as any, {
+      get(target, prop) {
+        // Return dummy functions for auth/other properties to prevent crashes on reference
+        if (prop === 'auth') {
+          return new Proxy({} as any, {
+            get(t, p) {
+              return () => {
+                throw new Error("Supabase auth method called during build or without environment variables.");
+              };
+            }
+          });
+        }
+        return () => {
+          throw new Error(`Supabase method ${String(prop)} called during build or without environment variables.`);
+        };
+      }
+    });
+  }
+
   return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       isSingleton: false,
       cookies: {
