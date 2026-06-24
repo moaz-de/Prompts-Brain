@@ -53,7 +53,7 @@ export function Navbar({ onNewPrompt }: NavbarProps) {
               table: 'profiles',
               filter: `id=eq.${user.id}`,
             },
-            (payload) => {
+            (payload: any) => {
               if (isMounted && payload.new && typeof payload.new.credits === 'number') {
                 setCredits(payload.new.credits);
               }
