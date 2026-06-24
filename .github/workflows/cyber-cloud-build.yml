@@ -58,7 +58,15 @@ jobs:
           docker build -t cyber-cloud-build -f ${{ github.event.inputs.dockerfile_path }} .
           docker save cyber-cloud-build | gzip > artifact.tar.gz
 
-      - name: Upload Artifact
+      - name: Upload Artifact to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifact
+          path: artifact.tar.gz
+          retention-days: 1
+
+      - name: Upload Artifact (Callback)
+        continue-on-error: true
         run: |
           curl -X POST \
             -F "artifact=@artifact.tar.gz" \
@@ -66,8 +74,9 @@ jobs:
             -H "Authorization: Bearer ${{ github.event.inputs.token }}" \
             "${{ github.event.inputs.callback_url }}"
 
-      - name: Notify Failure
+      - name: Notify Failure (Callback)
         if: failure()
+        continue-on-error: true
         run: |
           curl -X POST \
             -F "status=failed" \
