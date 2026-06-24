@@ -1,0 +1,75 @@
+name: Cyber Cloud Remote Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: 'Build ID'
+        required: true
+      callback_url:
+        description: 'Callback URL'
+        required: true
+      token:
+        description: 'Authorization Token'
+        required: true
+      deployment_method:
+        description: 'Deployment Method'
+        required: true
+      dockerfile_path:
+        description: 'Dockerfile Path'
+        required: false
+        default: 'Dockerfile'
+      static_build_cmd:
+        description: 'Static Build Command'
+        required: false
+        default: 'npm run build'
+      static_dist_dir:
+        description: 'Static Dist Dir'
+        required: false
+        default: 'dist'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (for static sites)
+        if: ${{ github.event.inputs.deployment_method == 'static' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Static Site
+        if: ${{ github.event.inputs.deployment_method == 'static' }}
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            npm install
+          fi
+          ${{ github.event.inputs.static_build_cmd }}
+          tar -czf artifact.tar.gz -C ${{ github.event.inputs.static_dist_dir }} .
+
+      - name: Build Docker Image
+        if: ${{ github.event.inputs.deployment_method == 'dockerfile' }}
+        run: |
+          docker build -t cyber-cloud-build -f ${{ github.event.inputs.dockerfile_path }} .
+          docker save cyber-cloud-build | gzip > artifact.tar.gz
+
+      - name: Upload Artifact
+        run: |
+          curl -X POST \
+            -F "artifact=@artifact.tar.gz" \
+            -F "status=success" \
+            -H "Authorization: Bearer ${{ github.event.inputs.token }}" \
+            "${{ github.event.inputs.callback_url }}"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          curl -X POST \
+            -F "status=failed" \
+            -H "Authorization: Bearer ${{ github.event.inputs.token }}" \
+            "${{ github.event.inputs.callback_url }}"
