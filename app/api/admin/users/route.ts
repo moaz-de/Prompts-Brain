@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-const ADMIN_EMAIL = 'manafkemo@gmail.com';
+const ADMIN_EMAIL = 'oooon7733@gmail.com';
 
 export async function GET() {
   try {
